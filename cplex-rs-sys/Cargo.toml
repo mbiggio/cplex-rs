@@ -1,0 +1,16 @@
+[package]
+name = "cplex-rs-sys"
+version = "0.1.0"
+edition = "2021"
+publish = ["artifactory"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.69"
+glob = "0.3"
+
+[dev-dependencies]
+libc = "0.2.153"

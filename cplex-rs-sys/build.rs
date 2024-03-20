@@ -1,3 +1,4 @@
+use glob::glob;
 use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
@@ -47,9 +48,15 @@ impl IgnoreMacros {
 }
 
 fn main() {
-    let cplex_installation_path = PathBuf::from(env::var("CPLEX_PATH").expect(
-        "cplaex installation path not specified. Please set the env variable 'CPLEX_PATH'",
-    ));
+    let cplex_installation_path = env::var("CPLEX_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            glob("/opt/ibm/ILOG/*/cplex")
+                .expect("Invalid glob pattern")
+                .filter_map(|path| path.ok())
+                .next()
+                .expect("No valid CPLEX installation path found")
+        });
 
     let cplex_include_path = cplex_installation_path.join("include");
 
@@ -62,8 +69,8 @@ fn main() {
         cplex_lib_path.as_os_str().to_string_lossy()
     );
 
-    // Tell cargo to tell rustc to link the system bzip2
-    // shared library.
+    // Tell cargo to tell rustc to link the system cplex
+    // static library.
     println!("cargo:rustc-link-lib=cplex");
 
     // The bindgen::Builder is the main entry point
