@@ -47,8 +47,20 @@ impl IgnoreMacros {
 }
 
 fn main() {
+    let cplex_installation_path = PathBuf::from(env::var("CPLEX_PATH").expect(
+        "cplaex installation path not specified. Please set the env variable 'CPLEX_PATH'",
+    ));
+
+    let cplex_include_path = cplex_installation_path.join("include");
+
+    // For now we support only static linking on linux x86-64
+    let cplex_lib_path = cplex_installation_path.join("lib/x86-64_linux/static_pic");
+
     // Tell cargo to look for shared libraries in the specified directory
-    println!("cargo:rustc-link-search=/usr/local/cplex/lib/x86-64_linux/static_pic");
+    println!(
+        "cargo:rustc-link-search={}",
+        cplex_lib_path.as_os_str().to_string_lossy()
+    );
 
     // Tell cargo to tell rustc to link the system bzip2
     // shared library.
@@ -61,6 +73,10 @@ fn main() {
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
+        .clang_arg(format!(
+            "-F{}",
+            cplex_include_path.as_os_str().to_string_lossy()
+        ))
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
