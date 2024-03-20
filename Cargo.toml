@@ -10,3 +10,6 @@ publish = ["artifactory"]
 
 [build-dependencies]
 bindgen = "0.69"
+
+[dev-dependencies]
+libc = "0.2.153"
