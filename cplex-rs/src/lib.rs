@@ -1,5 +1,5 @@
 mod error;
-mod parameters;
+pub mod parameters;
 
 use error::Result;
 pub use ffi;
@@ -9,16 +9,18 @@ use ffi::{
     CPXgetobjval, CPXgetx, CPXlpopt, CPXmipopt, CPXnewcols, CPXopenCPLEX, CPXsetdblparam,
     CPXsetintparam, CPXwriteprob, CPX_PARAM_EPINT,
 };
-use parameters::{Parameter, ParameterType};
+use log::error;
+use parameters::{Parameter, ParameterValue};
 
-use std::ffi::{c_char, c_double, c_int, CString};
+use std::{
+    ffi::{c_char, c_double, c_int, CString},
+    iter,
+};
 
 pub const INFINITY: f64 = 1.0E+20;
 pub const EPINT: c_double = 1e-5;
 
-pub struct Env {
-    inner: *mut cpxenv,
-}
+pub struct Env(*mut cpxenv);
 
 impl Env {
     pub fn new() -> Result<Env> {
@@ -27,18 +29,21 @@ impl Env {
         if env.is_null() {
             Err(error::Cplex::env_error(status).into())
         } else {
-            Ok(Env { inner: env })
+            Ok(Env(env))
         }
     }
 
-    pub fn set_param(&mut self, p: Parameter) -> Result<()> {
-        let status = match p.param_type() {
-            ParameterType::Integer(i) => unsafe { CPXsetintparam(self.inner, p.to_id(), i) },
-            ParameterType::Double(d) => unsafe { CPXsetdblparam(self.inner, p.to_id(), d) },
+    pub fn set_parameter<P: Parameter>(&mut self, p: P) -> Result<()> {
+        let status = match p.value() {
+            ParameterValue::Integer(i) => unsafe { CPXsetintparam(self.0, p.id() as i32, i) },
+            ParameterValue::Double(d) => unsafe { CPXsetdblparam(self.0, p.id() as i32, d) },
         };
 
         if status != 0 {
-            Err(error::Cplex::from_code(self.inner, status).into())
+            Err(
+                error::Cplex::from_code(self.0, status, Some("Failure in setting parameters"))
+                    .into(),
+            )
         } else {
             Ok(())
         }
@@ -48,7 +53,10 @@ impl Env {
 impl Drop for Env {
     fn drop(&mut self) {
         unsafe {
-            assert_eq!(CPXcloseCPLEX(&mut self.inner), 0);
+            let status = CPXcloseCPLEX(&mut self.0);
+            if status != 0 {
+                error!("Unable to close CPLEX context, got status: '{}'", status)
+            }
         }
     }
 }
@@ -77,10 +85,10 @@ impl Variable {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VariableId(usize);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ConstraintId(usize);
 
 #[derive(Clone, Debug)]
@@ -200,11 +208,11 @@ impl<'a> Problem<'a> {
         S: AsRef<str>,
     {
         let mut status = 0;
-        let name =
-            CString::new(name.as_ref()).map_err(|e| error::Input::from_message(e.to_string()))?;
-        let inner = unsafe { CPXcreateprob(env.inner, &mut status, name.as_ptr()) };
+        let name = CString::new(name.as_ref())
+            .map_err(|e| error::Input::from_message(e.to_string(), None))?;
+        let inner = unsafe { CPXcreateprob(env.0, &mut status, name.as_ptr()) };
         if inner.is_null() {
-            Err(error::Cplex::from_code(env.inner, status).into())
+            Err(error::Cplex::from_code(env.0, status, Some("Failure in problem creation")).into())
         } else {
             Ok(Problem {
                 inner,
@@ -215,17 +223,16 @@ impl<'a> Problem<'a> {
         }
     }
 
-    /// Add a variable to the problem. The Variable is **moved** into
-    /// the problem. At this time, it is not possible to get a
-    /// reference to it back.
+    /// Add a variable to the problem.
     ///
-    /// The column index for the Variable is returned.
+    /// The id for the Variable is returned.
     pub fn add_variable(&mut self, var: Variable) -> Result<VariableId> {
-        let name = CString::new(var.name.as_bytes())
-            .map_err(|e| error::Input::from_message(e.to_string()))?;
+        let name = CString::new(var.name.as_bytes()).map_err(|e| {
+            error::Input::from_message(e.to_string(), Some("Failure in adding variable"))
+        })?;
         let status = unsafe {
             CPXnewcols(
-                self.env.inner,
+                self.env.0,
                 self.inner,
                 1,
                 &var.obj,
@@ -237,18 +244,71 @@ impl<'a> Problem<'a> {
         };
 
         if status != 0 {
-            Err(error::Cplex::from_code(self.env.inner, status).into())
+            Err(
+                error::Cplex::from_code(self.env.0, status, Some("Failure in adding variable"))
+                    .into(),
+            )
         } else {
-            let index = unsafe { CPXgetnumcols(self.env.inner, self.inner) } as usize - 1;
+            let index = unsafe { CPXgetnumcols(self.env.0, self.inner) } as usize - 1;
             assert_eq!(self.variables.len(), index);
             self.variables.push(var);
             Ok(VariableId(index))
         }
     }
 
+    pub fn add_variables(&mut self, vars: Vec<Variable>) -> Result<Vec<VariableId>> {
+        let names = vars
+            .iter()
+            .map(|v| {
+                CString::new(v.name.as_bytes()).map_err(|e| {
+                    error::Input::from_message(e.to_string(), Some("Failure in adding variable"))
+                        .into()
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let mut name_ptrs = names
+            .iter()
+            .map(|n| n.as_ptr() as *mut _)
+            .collect::<Vec<_>>();
+
+        let objs = vars.iter().map(|v| v.obj).collect::<Vec<_>>();
+        let lbs = vars.iter().map(|v| v.lb).collect::<Vec<_>>();
+        let ubs = vars.iter().map(|v| v.ub).collect::<Vec<_>>();
+        let types = vars.iter().map(|v| v.ty.into_raw()).collect::<Vec<_>>();
+
+        let status = unsafe {
+            CPXnewcols(
+                self.env.0,
+                self.inner,
+                vars.len() as i32,
+                objs.as_ptr(),
+                lbs.as_ptr(),
+                ubs.as_ptr(),
+                types.as_ptr(),
+                name_ptrs.as_mut_ptr(),
+            )
+        };
+
+        if status != 0 {
+            Err(
+                error::Cplex::from_code(self.env.0, status, Some("Failure in adding variable"))
+                    .into(),
+            )
+        } else {
+            let indices: Vec<VariableId> = vars
+                .iter()
+                .enumerate()
+                .map(|(idx, _)| VariableId(idx + self.variables.len()))
+                .collect();
+            self.variables.extend(vars);
+            Ok(indices)
+        }
+    }
+
     /// Add a constraint to the problem.
     ///
-    /// The row index for the constraint is returned.
+    /// The id for the constraint is returned.
     pub fn add_constraint(&mut self, con: Constraint) -> Result<ConstraintId> {
         let (ind, val): (Vec<c_int>, Vec<f64>) = con
             .vars
@@ -257,11 +317,12 @@ impl<'a> Problem<'a> {
             .map(|(var_id, weight)| (var_id.0 as c_int, weight))
             .unzip();
         let nz = val.len() as c_int;
-        let name = CString::new(con.name.as_bytes())
-            .map_err(|e| error::Input::from_message(e.to_string()))?;
+        let name = CString::new(con.name.as_bytes()).map_err(|e| {
+            error::Input::from_message(e.to_string(), Some("Failure in adding constraint"))
+        })?;
         let status = unsafe {
             CPXaddrows(
-                self.env.inner,
+                self.env.0,
                 self.inner,
                 0,
                 1,
@@ -277,11 +338,89 @@ impl<'a> Problem<'a> {
         };
 
         if status != 0 {
-            Err(error::Cplex::from_code(self.env.inner, status).into())
+            Err(
+                error::Cplex::from_code(self.env.0, status, Some("Failure in adding constraint"))
+                    .into(),
+            )
         } else {
             let index = self.constraints.len();
             self.constraints.push(con);
             Ok(ConstraintId(index))
+        }
+    }
+
+    pub fn add_constraints(&mut self, con: Vec<Constraint>) -> Result<Vec<ConstraintId>> {
+        if con.is_empty() {
+            return Err(error::Input::from_message(
+                "Called add_constraints with 0 constaints".to_owned(),
+                None,
+            )
+            .into());
+        }
+        let beg = iter::once(0)
+            .chain(con[..con.len() - 1].iter().map(|c| c.vars.len()))
+            .scan(0, |state, x| {
+                *state += x;
+                Some(*state as i32)
+            })
+            .collect::<Vec<_>>();
+
+        let (ind, val): (Vec<c_int>, Vec<f64>) = con
+            .iter()
+            .flat_map(|c| c.vars.iter())
+            .filter(|(_, weight)| *weight != 0.0)
+            .map(|(var_id, weight)| (var_id.0 as c_int, weight))
+            .unzip();
+
+        let nz = val.len() as c_int;
+        let names = con
+            .iter()
+            .map(|c| {
+                CString::new(c.name.as_bytes()).map_err(|e| {
+                    error::Input::from_message(e.to_string(), Some("Failure in adding constraint"))
+                        .into()
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let mut name_ptrs = names
+            .iter()
+            .map(|n| n.as_ptr() as *mut _)
+            .collect::<Vec<_>>();
+
+        let rhss = con.iter().map(|c| c.rhs).collect::<Vec<_>>();
+        let senses = con.iter().map(|c| c.ty.into_raw()).collect::<Vec<_>>();
+
+        let status = unsafe {
+            CPXaddrows(
+                self.env.0,
+                self.inner,
+                0,
+                con.len() as i32,
+                nz,
+                rhss.as_ptr(),
+                senses.as_ptr(),
+                beg.as_ptr(),
+                ind.as_ptr(),
+                val.as_ptr(),
+                std::ptr::null_mut(),
+                name_ptrs.as_mut_ptr(),
+            )
+        };
+
+        if status != 0 {
+            Err(
+                error::Cplex::from_code(self.env.0, status, Some("Failure in adding constraint"))
+                    .into(),
+            )
+        } else {
+            let indices = con
+                .iter()
+                .enumerate()
+                .map(|(idx, _)| ConstraintId(idx + self.constraints.len()))
+                .collect();
+            self.constraints.extend(con);
+            Ok(indices)
         }
     }
 
@@ -296,11 +435,12 @@ impl<'a> Problem<'a> {
             .map(|(var_id, weight)| (var_id.0 as c_int, weight))
             .unzip();
         let nz = val.len() as c_int;
-        let name = CString::new(con.name.as_bytes())
-            .map_err(|e| error::Input::from_message(e.to_string()))?;
+        let name = CString::new(con.name.as_bytes()).map_err(|e| {
+            error::Input::from_message(e.to_string(), Some("Failure in adding lazy constraint"))
+        })?;
         let status = unsafe {
             CPXaddlazyconstraints(
-                self.env.inner,
+                self.env.0,
                 self.inner,
                 1,
                 nz,
@@ -314,7 +454,12 @@ impl<'a> Problem<'a> {
         };
 
         if status != 0 {
-            Err(error::Cplex::from_code(self.env.inner, status).into())
+            Err(error::Cplex::from_code(
+                self.env.0,
+                status,
+                Some("Failure in adding lazy constraint"),
+            )
+            .into())
         } else {
             let index = self.constraints.len();
             self.constraints.push(con);
@@ -330,7 +475,7 @@ impl<'a> Problem<'a> {
             .unzip();
         let status = unsafe {
             CPXchgobj(
-                self.env.inner,
+                self.env.0,
                 self.inner,
                 ind.len() as c_int,
                 ind.as_ptr(),
@@ -339,40 +484,48 @@ impl<'a> Problem<'a> {
         };
 
         if status != 0 {
-            Err(error::Cplex::from_code(self.env.inner, status).into())
+            Err(
+                error::Cplex::from_code(self.env.0, status, Some("Failure in setting objective"))
+                    .into(),
+            )
         } else {
             self.set_objective_type(ty)
         }
     }
 
     /// Change the objective type. Default: `ObjectiveType::Minimize`.
-    ///
-    /// It is recommended to use this in conjunction with objective
-    /// coefficients set by the `var!` macro rather than using
-    /// `set_objective`.
     pub fn set_objective_type(&mut self, ty: ObjectiveType) -> Result<()> {
-        let status = unsafe { CPXchgobjsen(self.env.inner, self.inner, ty.into_raw()) };
+        let status = unsafe { CPXchgobjsen(self.env.0, self.inner, ty.into_raw()) };
         if status != 0 {
-            Err(error::Cplex::from_code(self.env.inner, status).into())
+            Err(error::Cplex::from_code(
+                self.env.0,
+                status,
+                Some("Failure in setting objective type"),
+            )
+            .into())
         } else {
             Ok(())
         }
     }
 
-    /// Write the problem to a file named `name`. At this time, it is
-    /// not possible to use a `Write` object instead, as this calls C
-    /// code directly.
+    /// Write the problem to a file named `name`.
     pub fn write<S>(&self, name: S) -> Result<()>
     where
         S: AsRef<str>,
     {
-        let name =
-            CString::new(name.as_ref()).map_err(|e| error::Input::from_message(e.to_string()))?;
+        let name = CString::new(name.as_ref()).map_err(|e| {
+            error::Input::from_message(e.to_string(), Some("Failure in writing problem file"))
+        })?;
         let status =
-            unsafe { CPXwriteprob(self.env.inner, self.inner, name.as_ptr(), std::ptr::null()) };
+            unsafe { CPXwriteprob(self.env.0, self.inner, name.as_ptr(), std::ptr::null()) };
 
         if status != 0 {
-            Err(error::Cplex::from_code(self.env.inner, status).into())
+            Err(error::Cplex::from_code(
+                self.env.0,
+                status,
+                Some("Failure in writing problem file"),
+            )
+            .into())
         } else {
             Ok(())
         }
@@ -388,7 +541,7 @@ impl<'a> Problem<'a> {
 
         let status = unsafe {
             CPXaddmipstarts(
-                self.env.inner,
+                self.env.0,
                 self.inner,
                 1,
                 vars.len() as c_int,
@@ -401,7 +554,12 @@ impl<'a> Problem<'a> {
         };
 
         if status != 0 {
-            Err(error::Cplex::from_code(self.env.inner, status).into())
+            Err(error::Cplex::from_code(
+                self.env.0,
+                status,
+                Some("Failure in adding initial solution"),
+            )
+            .into())
         } else {
             Ok(())
         }
@@ -411,30 +569,45 @@ impl<'a> Problem<'a> {
     /// result.
     pub fn solve_as(&mut self, pt: ProblemType) -> Result<Solution> {
         if pt == ProblemType::Linear {
-            let status = unsafe { CPXchgprobtype(self.env.inner, self.inner, 0) };
+            let status = unsafe { CPXchgprobtype(self.env.0, self.inner, 0) };
 
             if status != 0 {
-                return Err(error::Cplex::from_code(self.env.inner, status).into());
+                return Err(error::Cplex::from_code(
+                    self.env.0,
+                    status,
+                    Some("Failure in solving problem"),
+                )
+                .into());
             }
         }
         let status = match pt {
-            ProblemType::MixedInteger => unsafe { CPXmipopt(self.env.inner, self.inner) },
-            ProblemType::Linear => unsafe { CPXlpopt(self.env.inner, self.inner) },
+            ProblemType::MixedInteger => unsafe { CPXmipopt(self.env.0, self.inner) },
+            ProblemType::Linear => unsafe { CPXlpopt(self.env.0, self.inner) },
         };
         if status != 0 {
-            return Err(error::Cplex::from_code(self.env.inner, status).into());
+            return Err(error::Cplex::from_code(
+                self.env.0,
+                status,
+                Some("Failure in solving problem"),
+            )
+            .into());
         }
 
         let mut objval: f64 = 0.0;
-        let status = unsafe { CPXgetobjval(self.env.inner, self.inner, &mut objval) };
+        let status = unsafe { CPXgetobjval(self.env.0, self.inner, &mut objval) };
         if status != 0 {
-            return Err(error::Cplex::from_code(self.env.inner, status).into());
+            return Err(error::Cplex::from_code(
+                self.env.0,
+                status,
+                Some("Failure in solving problem"),
+            )
+            .into());
         }
 
         let mut xs = vec![0f64; self.variables.len()];
         let status = unsafe {
             CPXgetx(
-                self.env.inner,
+                self.env.0,
                 self.inner,
                 xs.as_mut_ptr(),
                 0,
@@ -442,10 +615,15 @@ impl<'a> Problem<'a> {
             )
         };
         if status != 0 {
-            return Err(error::Cplex::from_code(self.env.inner, status).into());
+            return Err(error::Cplex::from_code(
+                self.env.0,
+                status,
+                Some("Failure in solving problem"),
+            )
+            .into());
         }
         let mut eps = EPINT;
-        unsafe { CPXgetdblparam(self.env.inner, CPX_PARAM_EPINT as i32, &mut eps) };
+        unsafe { CPXgetdblparam(self.env.0, CPX_PARAM_EPINT as i32, &mut eps) };
         return Ok(Solution {
             objective: objval,
             variables: xs
@@ -461,17 +639,12 @@ impl<'a> Problem<'a> {
                 .collect::<Vec<VariableValue>>(),
         });
     }
-
-    /// Solve the problem as a Mixed Integer Program
-    pub fn solve(&mut self) -> Result<Solution> {
-        self.solve_as(ProblemType::MixedInteger)
-    }
 }
 
 impl<'a> Drop for Problem<'a> {
     fn drop(&mut self) {
         unsafe {
-            assert_eq!(CPXfreeprob(self.env.inner, &mut self.inner), 0);
+            assert_eq!(CPXfreeprob(self.env.0, &mut self.inner), 0);
         }
     }
 }
@@ -519,26 +692,100 @@ mod test {
             .add_variable(Variable::new(VariableType::Integer, 1.0, 2.0, 3.0, "x3"))
             .unwrap();
 
-        let _c0 = problem.add_constraint(Constraint::new(
-            ConstraintType::LessThanEq,
-            20.0,
-            "c0",
-            vec![(x0, -1.0), (x1, 1.0), (x2, 1.0), (x3, 10.0)],
-        ));
+        assert_eq!(x0, VariableId(0));
+        assert_eq!(x1, VariableId(1));
+        assert_eq!(x2, VariableId(2));
+        assert_eq!(x3, VariableId(3));
 
-        let _c1 = problem.add_constraint(Constraint::new(
-            ConstraintType::LessThanEq,
-            30.0,
-            "c1",
-            vec![(x0, 1.0), (x1, -3.0), (x2, 1.0)],
-        ));
+        let c0 = problem
+            .add_constraint(Constraint::new(
+                ConstraintType::LessThanEq,
+                20.0,
+                "c0",
+                vec![(x0, -1.0), (x1, 1.0), (x2, 1.0), (x3, 10.0)],
+            ))
+            .unwrap();
 
-        let _c2 = problem.add_constraint(Constraint::new(
-            ConstraintType::Eq,
-            0.0,
-            "c2",
-            vec![(x1, 1.0), (x3, -3.5)],
-        ));
+        let c1 = problem
+            .add_constraint(Constraint::new(
+                ConstraintType::LessThanEq,
+                30.0,
+                "c1",
+                vec![(x0, 1.0), (x1, -3.0), (x2, 1.0)],
+            ))
+            .unwrap();
+
+        let c2 = problem
+            .add_constraint(Constraint::new(
+                ConstraintType::Eq,
+                0.0,
+                "c2",
+                vec![(x1, 1.0), (x3, -3.5)],
+            ))
+            .unwrap();
+
+        assert_eq!(c0, ConstraintId(0));
+        assert_eq!(c1, ConstraintId(1));
+        assert_eq!(c2, ConstraintId(2));
+
+        problem.set_objective_type(ObjectiveType::Maximize).unwrap();
+
+        let solution = problem.solve_as(ProblemType::MixedInteger).unwrap();
+
+        assert_eq!(solution.objective, 122.5);
+    }
+
+    #[test]
+    fn mipex1_batch() {
+        let env = Env::new().unwrap();
+        let mut problem = Problem::new(&env, "mipex1").unwrap();
+
+        let vars = problem
+            .add_variables(vec![
+                Variable::new(VariableType::Continuous, 1.0, 0.0, 40.0, "x0"),
+                Variable::new(VariableType::Continuous, 2.0, 0.0, INFINITY, "x1"),
+                Variable::new(VariableType::Continuous, 3.0, 0.0, INFINITY, "x2"),
+                Variable::new(VariableType::Integer, 1.0, 2.0, 3.0, "x3"),
+            ])
+            .unwrap();
+
+        assert_eq!(
+            vars,
+            vec![VariableId(0), VariableId(1), VariableId(2), VariableId(3)]
+        );
+
+        let cons = problem
+            .add_constraints(vec![
+                Constraint::new(
+                    ConstraintType::LessThanEq,
+                    20.0,
+                    "c0",
+                    vec![
+                        (vars[0], -1.0),
+                        (vars[1], 1.0),
+                        (vars[2], 1.0),
+                        (vars[3], 10.0),
+                    ],
+                ),
+                Constraint::new(
+                    ConstraintType::LessThanEq,
+                    30.0,
+                    "c1",
+                    vec![(vars[0], 1.0), (vars[1], -3.0), (vars[2], 1.0)],
+                ),
+                Constraint::new(
+                    ConstraintType::Eq,
+                    0.0,
+                    "c2",
+                    vec![(vars[1], 1.0), (vars[3], -3.5)],
+                ),
+            ])
+            .unwrap();
+
+        assert_eq!(
+            cons,
+            vec![ConstraintId(0), ConstraintId(1), ConstraintId(2)]
+        );
 
         problem.set_objective_type(ObjectiveType::Maximize).unwrap();
 

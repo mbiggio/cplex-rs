@@ -2,9 +2,10 @@
 name = "cplex-rs-sys"
 version = "0.1.0"
 edition = "2021"
-publish = ["artifactory"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "FFI bindings to cplex"
+license = "MIT"
+keywords = ["optimization", "binding", "cplex"]
+links = "static=cplex"
 
 [dependencies]
 

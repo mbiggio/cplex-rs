@@ -21,10 +21,15 @@ pub enum Error {
 pub struct Cplex {
     pub code: i32,
     pub message: String,
+    pub context: Option<&'static str>,
 }
 
 impl Cplex {
-    pub(crate) fn from_code(env: *const cpxenv, code: c_int) -> Cplex {
+    pub(crate) fn from_code(
+        env: *const cpxenv,
+        code: c_int,
+        context: Option<&'static str>,
+    ) -> Cplex {
         let mut buf = vec![0u8; CPXMESSAGEBUFSIZE as usize];
         let ptr = unsafe { CPXgeterrorstring(env, code, buf.as_mut_ptr() as *mut i8) };
         let message = ptr
@@ -34,12 +39,20 @@ impl Cplex {
             .and_then(|_| CString::from_vec_with_nul(buf).ok())
             .and_then(|cs| cs.into_string().ok())
             .unwrap_or_else(|| "Unable to extract error message".to_string());
-        Self { code, message }
+        Self {
+            code,
+            message,
+            context,
+        }
     }
 
     pub(crate) fn env_error(code: c_int) -> Cplex {
         let message = "Error encountered when constructing CPLEX env".to_owned();
-        Self { code, message }
+        Self {
+            code,
+            message,
+            context: Some("Failure in environment creation"),
+        }
     }
 }
 
@@ -47,10 +60,11 @@ impl Cplex {
 #[error("Input error: {message}")]
 pub struct Input {
     pub message: String,
+    pub context: Option<&'static str>,
 }
 
 impl Input {
-    pub(crate) fn from_message(message: String) -> Input {
-        Self { message }
+    pub(crate) fn from_message(message: String, context: Option<&'static str>) -> Input {
+        Self { message, context }
     }
 }

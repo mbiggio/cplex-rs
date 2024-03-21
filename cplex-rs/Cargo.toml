@@ -2,10 +2,11 @@
 name = "cplex-rs"
 version = "0.1.0"
 edition = "2021"
-publish = ["artifactory"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Binding of IBM Cplex library, based on rplex"
+license = "MIT"
+keywords = ["optimization", "binding", "cplex"]
 
 [dependencies]
 ffi = { package = "cplex-rs-sys", path = "../cplex-rs-sys" }
 thiserror = "1.0"
+log = "0.4"
