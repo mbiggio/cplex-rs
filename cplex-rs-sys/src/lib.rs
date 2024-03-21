@@ -34,46 +34,46 @@ mod tests {
             panic!("Failed to create LP");
         }
 
-        let mut zobj = unsafe {
+        let zobj = unsafe {
             libc::malloc(NUMCOLS * std::mem::size_of::<libc::c_double>()) as *mut libc::c_double
         };
-        let mut zrhs = unsafe {
+        let zrhs = unsafe {
             libc::malloc(NUMROWS * std::mem::size_of::<libc::c_double>()) as *mut libc::c_double
         };
-        let mut zsense = unsafe {
+        let zsense = unsafe {
             libc::malloc(NUMROWS * std::mem::size_of::<libc::c_char>()) as *mut libc::c_char
         };
-        let mut zmathbeg = unsafe {
+        let zmathbeg = unsafe {
             libc::malloc(NUMCOLS * std::mem::size_of::<libc::c_int>()) as *mut libc::c_int
         };
-        let mut zmathcnt = unsafe {
+        let zmathcnt = unsafe {
             libc::malloc(NUMCOLS * std::mem::size_of::<libc::c_int>()) as *mut libc::c_int
         };
-        let mut zmathind =
+        let zmathind =
             unsafe { libc::malloc(NUMNZ * std::mem::size_of::<libc::c_int>()) as *mut libc::c_int };
-        let mut zmathval = unsafe {
+        let zmathval = unsafe {
             libc::malloc(NUMNZ * std::mem::size_of::<libc::c_double>()) as *mut libc::c_double
         };
-        let mut zlb = unsafe {
+        let zlb = unsafe {
             libc::malloc(NUMCOLS * std::mem::size_of::<libc::c_double>()) as *mut libc::c_double
         };
-        let mut zub = unsafe {
+        let zub = unsafe {
             libc::malloc(NUMCOLS * std::mem::size_of::<libc::c_double>()) as *mut libc::c_double
         };
-        let mut zctype = unsafe {
+        let zctype = unsafe {
             libc::malloc(NUMCOLS * std::mem::size_of::<libc::c_char>()) as *mut libc::c_char
         };
-        let mut obj = unsafe { std::slice::from_raw_parts_mut(zobj, NUMCOLS) };
+        let obj = unsafe { std::slice::from_raw_parts_mut(zobj, NUMCOLS) };
 
-        let mut rhs = unsafe { std::slice::from_raw_parts_mut(zrhs, NUMROWS) };
-        let mut sense = unsafe { std::slice::from_raw_parts_mut(zsense, NUMROWS) };
-        let mut mathbeg = unsafe { std::slice::from_raw_parts_mut(zmathbeg, NUMCOLS) };
-        let mut mathcnt = unsafe { std::slice::from_raw_parts_mut(zmathcnt, NUMCOLS) };
-        let mut mathind = unsafe { std::slice::from_raw_parts_mut(zmathind, NUMNZ) };
-        let mut mathval = unsafe { std::slice::from_raw_parts_mut(zmathval, NUMNZ) };
-        let mut lb = unsafe { std::slice::from_raw_parts_mut(zlb, NUMCOLS) };
-        let mut ub = unsafe { std::slice::from_raw_parts_mut(zub, NUMCOLS) };
-        let mut ctype = unsafe { std::slice::from_raw_parts_mut(zctype, NUMCOLS) };
+        let rhs = unsafe { std::slice::from_raw_parts_mut(zrhs, NUMROWS) };
+        let sense = unsafe { std::slice::from_raw_parts_mut(zsense, NUMROWS) };
+        let mathbeg = unsafe { std::slice::from_raw_parts_mut(zmathbeg, NUMCOLS) };
+        let mathcnt = unsafe { std::slice::from_raw_parts_mut(zmathcnt, NUMCOLS) };
+        let mathind = unsafe { std::slice::from_raw_parts_mut(zmathind, NUMNZ) };
+        let mathval = unsafe { std::slice::from_raw_parts_mut(zmathval, NUMNZ) };
+        let lb = unsafe { std::slice::from_raw_parts_mut(zlb, NUMCOLS) };
+        let ub = unsafe { std::slice::from_raw_parts_mut(zub, NUMCOLS) };
+        let ctype = unsafe { std::slice::from_raw_parts_mut(zctype, NUMCOLS) };
 
         obj[0] = 1.0;
         obj[1] = 2.0;
@@ -119,7 +119,7 @@ mod tests {
         ub[0] = 40.0;
         ub[1] = 1e+20;
         ub[2] = 1e+20;
-        ub[3] = 2.0;
+        ub[3] = 3.0;
 
         ctype[0] = 'C' as libc::c_char;
         ctype[1] = 'C' as libc::c_char;
@@ -181,6 +181,6 @@ mod tests {
             panic!("No MIP objective value available");
         }
 
-        println!("Solution value  = {}", objval);
+        assert_eq!(objval, 122.5);
     }
 }
