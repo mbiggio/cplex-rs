@@ -1,11 +1,12 @@
 [package]
 name = "cplex-rs-sys"
-version = "0.1.0"
-edition = "2021"
 description = "FFI bindings to cplex"
-license = "MIT"
-keywords = ["optimization", "binding", "cplex"]
 links = "static=cplex"
+authors.workspace = true
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+keywords.workspace = true
 
 [dependencies]
 

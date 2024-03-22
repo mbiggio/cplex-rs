@@ -8,6 +8,20 @@ pub type Result<T> = std::result::Result<T, Error>;
 use ffi::{cpxenv, CPXgeterrorstring, CPXMESSAGEBUFSIZE};
 use thiserror::Error;
 
+#[macro_export]
+macro_rules! cpx_result {
+    ( unsafe { $func:ident ( $env:expr $(, $b:expr)* $(,)? ) } ) => {
+        {
+            let status = unsafe { $func($env $(,$b)* ) };
+            if status != 0 {
+                Err(crate::errors::Error::from(crate::errors::Cplex::from_code($env, status)))
+            } else {
+                Ok(())
+            }
+        }
+    };
+}
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Cplex error: {0}")]
@@ -21,15 +35,10 @@ pub enum Error {
 pub struct Cplex {
     pub code: i32,
     pub message: String,
-    pub context: Option<&'static str>,
 }
 
 impl Cplex {
-    pub(crate) fn from_code(
-        env: *const cpxenv,
-        code: c_int,
-        context: Option<&'static str>,
-    ) -> Cplex {
+    pub(crate) fn from_code(env: *const cpxenv, code: c_int) -> Cplex {
         let mut buf = vec![0u8; CPXMESSAGEBUFSIZE as usize];
         let ptr = unsafe { CPXgeterrorstring(env, code, buf.as_mut_ptr() as *mut i8) };
         let message = ptr
@@ -39,20 +48,12 @@ impl Cplex {
             .and_then(|_| CString::from_vec_with_nul(buf).ok())
             .and_then(|cs| cs.into_string().ok())
             .unwrap_or_else(|| "Unable to extract error message".to_string());
-        Self {
-            code,
-            message,
-            context,
-        }
+        Self { code, message }
     }
 
     pub(crate) fn env_error(code: c_int) -> Cplex {
         let message = "Error encountered when constructing CPLEX env".to_owned();
-        Self {
-            code,
-            message,
-            context: Some("Failure in environment creation"),
-        }
+        Self { code, message }
     }
 }
 
@@ -60,11 +61,10 @@ impl Cplex {
 #[error("Input error: {message}")]
 pub struct Input {
     pub message: String,
-    pub context: Option<&'static str>,
 }
 
 impl Input {
-    pub(crate) fn from_message(message: String, context: Option<&'static str>) -> Input {
-        Self { message, context }
+    pub(crate) fn from_message(message: String) -> Input {
+        Self { message }
     }
 }

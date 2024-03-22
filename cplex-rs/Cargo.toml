@@ -1,10 +1,11 @@
 [package]
 name = "cplex-rs"
-version = "0.1.0"
-edition = "2021"
-description = "Binding of IBM Cplex library, based on rplex"
-license = "MIT"
-keywords = ["optimization", "binding", "cplex"]
+description = "Binding of IBM Cplex library"
+authors.workspace = true
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+keywords.workspace = true
 
 [dependencies]
 ffi = { package = "cplex-rs-sys", path = "../cplex-rs-sys" }
