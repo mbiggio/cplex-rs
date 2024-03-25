@@ -34,9 +34,10 @@ pub use environment::*;
 pub use errors::{Error, Result};
 pub use ffi;
 use ffi::{
-    cpxlp, CPXaddmipstarts, CPXaddrows, CPXchgobj, CPXchgobjsen, CPXchgprobtype, CPXcreateprob,
-    CPXfreeprob, CPXgetobjval, CPXgetx, CPXlpopt, CPXmipopt, CPXnewcols, CPXwriteprob, CPXPROB_LP,
-    CPXPROB_MILP, CPX_MAX, CPX_MIN,
+    cpxlp, CPX_STAT_INForUNBD, CPXaddmipstarts, CPXaddrows, CPXchgobj, CPXchgobjsen,
+    CPXchgprobtype, CPXcreateprob, CPXfreeprob, CPXgetobjval, CPXgetstat, CPXgetx, CPXlpopt,
+    CPXmipopt, CPXnewcols, CPXwriteprob, CPXMIP_UNBOUNDED, CPXPROB_LP, CPXPROB_MILP, CPX_MAX,
+    CPX_MIN, CPX_STAT_INFEASIBLE, CPX_STAT_UNBOUNDED,
 };
 use log::info;
 pub use solution::*;
@@ -418,6 +419,23 @@ impl Problem {
         let elapsed = start_optim.elapsed();
         info!("CPLEX model solution took: {:?}", elapsed);
 
+        let code = unsafe { CPXgetstat(self.env.0, self.inner) };
+        if code as u32 == CPX_STAT_INFEASIBLE || code as u32 == CPX_STAT_INForUNBD {
+            return Err(crate::errors::Cplex::Unfeasible {
+                code,
+                message: "Unfeasible problem".to_string(),
+            }
+            .into());
+        }
+
+        if code as u32 == CPX_STAT_UNBOUNDED || code as u32 == CPXMIP_UNBOUNDED {
+            return Err(crate::errors::Cplex::Unbounded {
+                code,
+                message: "Unbounded problem".to_string(),
+            }
+            .into());
+        }
+
         let mut objective_value: f64 = 0.0;
         macros::cpx_lp_result!(unsafe {
             CPXgetobjval(self.env.0, self.inner, &mut objective_value)
@@ -593,5 +611,68 @@ mod test {
         let solution = problem.solve_as(ProblemType::MixedInteger).unwrap();
 
         assert_eq!(solution.objective_value(), 122.5);
+    }
+
+    #[test]
+    fn unfeasible() {
+        let env = Environment::new().unwrap();
+        let mut problem = Problem::new(env, "unfeasible").unwrap();
+
+        let vars = problem
+            .add_variables(vec![
+                Variable::new(VariableType::Continuous, 1.0, 0.0, 1.0, "x0"),
+                Variable::new(VariableType::Continuous, 1.0, 0.0, 1.0, "x1"),
+            ])
+            .unwrap();
+
+        assert_eq!(vars, vec![VariableId(0), VariableId(1)]);
+
+        let cons = problem
+            .add_constraints(vec![
+                Constraint::new(
+                    ConstraintType::Eq,
+                    0.0,
+                    None,
+                    vec![(vars[0], 1.0), (vars[1], 1.0)],
+                ),
+                Constraint::new(
+                    ConstraintType::Eq,
+                    1.0,
+                    None,
+                    vec![(vars[0], 1.0), (vars[1], 1.0)],
+                ),
+            ])
+            .unwrap();
+
+        assert_eq!(cons, vec![ConstraintId(0), ConstraintId(1)]);
+
+        let problem = problem.set_objective_type(ObjectiveType::Maximize).unwrap();
+        assert!(matches!(
+            problem.solve_as(ProblemType::Linear),
+            Err(errors::Error::Cplex(errors::Cplex::Unfeasible { .. }))
+        ));
+    }
+
+    #[test]
+    fn unbounded() {
+        let env = Environment::new().unwrap();
+        let mut problem = Problem::new(env, "unbounded").unwrap();
+
+        let v0 = problem
+            .add_variable(Variable::new(
+                VariableType::Integer,
+                1.0,
+                0.0,
+                INFINITY,
+                "x0",
+            ))
+            .unwrap();
+
+        let problem = problem.set_objective_type(ObjectiveType::Maximize).unwrap();
+
+        assert!(matches!(
+            problem.solve_as(ProblemType::MixedInteger),
+            Err(errors::Error::Cplex(errors::Cplex::Unbounded { .. }))
+        ));
     }
 }
