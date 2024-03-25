@@ -1,18 +1,9 @@
-use crate::variables::{Variable, VariableType};
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum VariableValue {
-    Continuous(f64),
-    Binary(bool),
-    Integer(i32),
-    SemiContinuous(f64),
-    SemiInteger(i32),
-}
+use crate::variables::Variable;
 
 #[derive(Clone, Debug)]
 pub struct Solution {
     objective_value: f64,
-    variable_values: Vec<VariableValue>,
+    variable_values: Vec<f64>,
     variables: Vec<Variable>,
 }
 
@@ -21,23 +12,10 @@ impl Solution {
         variables: Vec<Variable>,
         variable_values: Vec<f64>,
         objective_value: f64,
-        tolerance: f64,
     ) -> Self {
         Self {
             objective_value,
-            variable_values: variable_values
-                .iter()
-                .zip(variables.iter())
-                .map(|(&x, v)| match v.type_() {
-                    VariableType::Binary => {
-                        VariableValue::Binary(x <= 1.0 + tolerance && x >= 1.0 - tolerance)
-                    }
-                    VariableType::Continuous => VariableValue::Continuous(x),
-                    VariableType::Integer => VariableValue::Integer(x as i32),
-                    VariableType::SemiContinuous => VariableValue::SemiContinuous(x),
-                    VariableType::SemiInteger => VariableValue::SemiInteger(x as i32),
-                })
-                .collect::<Vec<VariableValue>>(),
+            variable_values,
             variables,
         }
     }
@@ -50,7 +28,7 @@ impl Solution {
         &self.variables
     }
 
-    pub fn variable_valuess(&self) -> &[VariableValue] {
+    pub fn variable_values(&self) -> &[f64] {
         &self.variable_values
     }
 }

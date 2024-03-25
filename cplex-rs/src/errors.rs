@@ -5,22 +5,9 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-use ffi::{cpxenv, CPXgeterrorstring, CPXMESSAGEBUFSIZE};
+use ffi::{cpxenv, cpxlp, CPXgeterrorstring, CPXgetijdiv, CPXsolninfo, CPXMESSAGEBUFSIZE};
+use log::error;
 use thiserror::Error;
-
-#[macro_export]
-macro_rules! cpx_result {
-    ( unsafe { $func:ident ( $env:expr $(, $b:expr)* $(,)? ) } ) => {
-        {
-            let status = unsafe { $func($env $(,$b)* ) };
-            if status != 0 {
-                Err(crate::errors::Error::from(crate::errors::Cplex::from_code($env, status)))
-            } else {
-                Ok(())
-            }
-        }
-    };
-}
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -32,13 +19,14 @@ pub enum Error {
 
 #[derive(Error, Debug)]
 #[error("Cplex error status {code}: {message}")]
-pub struct Cplex {
-    pub code: i32,
-    pub message: String,
+pub enum Cplex {
+    Unbounded { code: c_int, message: String },
+    Unfeasible { code: c_int, message: String },
+    Other { code: c_int, message: String },
 }
 
 impl Cplex {
-    pub(crate) fn from_code(env: *const cpxenv, code: c_int) -> Cplex {
+    pub(crate) fn from_code(env: *const cpxenv, lp: *const cpxlp, code: c_int) -> Cplex {
         let mut buf = vec![0u8; CPXMESSAGEBUFSIZE as usize];
         let ptr = unsafe { CPXgeterrorstring(env, code, buf.as_mut_ptr() as *mut i8) };
         let message = ptr
@@ -48,12 +36,49 @@ impl Cplex {
             .and_then(|_| CString::from_vec_with_nul(buf).ok())
             .and_then(|cs| cs.into_string().ok())
             .unwrap_or_else(|| "Unable to extract error message".to_string());
-        Self { code, message }
+
+        if lp.is_null() {
+            return Self::Other { code, message };
+        }
+
+        if !Self::is_feasible(env, lp) {
+            Self::Unfeasible { code, message }
+        } else if !Self::is_bounded(env, lp) {
+            Self::Unbounded { code, message }
+        } else {
+            Self::Other { code, message }
+        }
+    }
+
+    fn is_bounded(env: *const cpxenv, lp: *const cpxlp) -> bool {
+        let mut i = 0;
+        let mut j = 0;
+        match unsafe { CPXgetijdiv(env, lp, &mut i, &mut j) } {
+            0 => j == -1,
+            _ => {
+                error!("Unable to determine if problem is bounded, assuming it is");
+                true
+            }
+        }
+    }
+
+    fn is_feasible(env: *const cpxenv, lp: *const cpxlp) -> bool {
+        let mut lpstat = 0;
+        let mut stype = 0;
+        let mut pfeas = 0;
+        let mut dfeas = 0;
+        match unsafe { CPXsolninfo(env, lp, &mut lpstat, &mut stype, &mut pfeas, &mut dfeas) } {
+            0 => pfeas != 0,
+            _ => {
+                error!("Unable to determine if problem is feasible, assuming it is");
+                true
+            }
+        }
     }
 
     pub(crate) fn env_error(code: c_int) -> Cplex {
         let message = "Error encountered when constructing CPLEX env".to_owned();
-        Self { code, message }
+        Self::Other { code, message }
     }
 }
 

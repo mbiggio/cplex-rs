@@ -24,22 +24,16 @@ pub struct Constraint {
     weights: Vec<(VariableId, f64)>,
     type_: ConstraintType,
     rhs: f64,
-    name: String,
+    name: Option<String>,
 }
 
 impl Constraint {
-    pub fn new<S, F>(
+    pub fn new(
         ty: ConstraintType,
-        rhs: F,
-        name: S,
+        rhs: f64,
+        name: Option<String>,
         vars: Vec<(VariableId, f64)>,
-    ) -> Constraint
-    where
-        String: From<S>,
-        f64: From<F>,
-    {
-        let rhs = rhs.into();
-        let name = name.into();
+    ) -> Constraint {
         Constraint {
             weights: vars,
             type_: ty,
@@ -48,8 +42,8 @@ impl Constraint {
         }
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
     }
 
     pub fn weights(&self) -> &[(VariableId, f64)] {

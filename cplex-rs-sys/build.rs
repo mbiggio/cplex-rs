@@ -55,7 +55,7 @@ fn main() {
                 .expect("Invalid glob pattern")
                 .filter_map(|path| path.ok())
                 .next()
-                .expect("No valid CPLEX installation path found")
+                .expect("No valid CPLEX installation path found. Please set the env variable 'CPLEX_PATH' with the CPLEX installation directory or install CPLEX in the default location.")
         });
 
     let cplex_include_path = cplex_installation_path.join("include");

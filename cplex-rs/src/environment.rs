@@ -1,10 +1,31 @@
+use std::ffi::CString;
+
 use crate::{
-    cpx_result,
     errors::{self, Result},
     parameters::{Parameter, ParameterValue},
 };
-use ffi::{cpxenv, CPXcloseCPLEX, CPXopenCPLEX, CPXsetdblparam, CPXsetintparam};
+use ffi::{
+    cpxenv, CPXcloseCPLEX, CPXopenCPLEX, CPXsetdblparam, CPXsetintparam, CPXsetlongparam,
+    CPXsetstrparam,
+};
 use log::error;
+
+mod macros {
+    macro_rules! cpx_env_result {
+        ( unsafe { $func:ident ( $env:expr $(, $b:expr)* $(,)? ) } ) => {
+            {
+                let status = unsafe { $func( $env $(,$b)* ) };
+                if status != 0 {
+                    Err(errors::Error::from(errors::Cplex::from_code($env, std::ptr::null(), status)))
+                } else {
+                    Ok(())
+                }
+            }
+        };
+    }
+
+    pub(super) use cpx_env_result;
+}
 
 pub struct Environment(pub(crate) *mut cpxenv);
 
@@ -22,10 +43,19 @@ impl Environment {
     pub fn set_parameter<P: Parameter>(&mut self, p: P) -> Result<()> {
         match p.value() {
             ParameterValue::Integer(i) => {
-                cpx_result!(unsafe { CPXsetintparam(self.0, p.id() as i32, i) })
+                macros::cpx_env_result!(unsafe { CPXsetintparam(self.0, p.id() as i32, i) })
+            }
+            ParameterValue::Long(l) => {
+                macros::cpx_env_result!(unsafe { CPXsetlongparam(self.0, p.id() as i32, l) })
             }
             ParameterValue::Double(d) => {
-                cpx_result!(unsafe { CPXsetdblparam(self.0, p.id() as i32, d) })
+                macros::cpx_env_result!(unsafe { CPXsetdblparam(self.0, p.id() as i32, d) })
+            }
+            ParameterValue::String(s) => {
+                let cstr = CString::new(s.as_bytes()).expect("Invalid parameter string");
+                macros::cpx_env_result!(unsafe {
+                    CPXsetstrparam(self.0, p.id() as i32, cstr.as_ptr())
+                })
             }
         }
     }
