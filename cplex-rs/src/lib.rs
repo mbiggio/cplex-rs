@@ -1,3 +1,26 @@
+//! Safe rust bindings to the CPLEX solver API.
+//!
+//! # Example
+//! ```
+//! use cplex_rs::*;
+//!
+//! let env = Environment::new().unwrap();
+//! let mut problem = Problem::new(env, "my_prob").unwrap();
+//!
+//! let v0 = problem.add_variable(Variable::new(VariableType::Continuous, 1.0, 0.0, 1.0, "x0")).unwrap();
+//! let v1 = problem.add_variable(Variable::new(VariableType::Continuous, 10.0, 0.0, 1.0, "x1")).unwrap();
+//! let c0 = problem.add_constraint(Constraint::new(ConstraintType::GreaterThanEq, 0.3, None, vec![(v0, 1.0)])).unwrap();
+//! let c1 = problem.add_constraint(Constraint::new(ConstraintType::Eq, 1.0, None, vec![(v0, 1.0), (v1, 1.0)])).unwrap();
+//!
+//! let solution = problem.set_objective_type(ObjectiveType::Maximize)
+//!    .unwrap()
+//!    .solve_as(ProblemType::Linear)
+//!    .unwrap();
+//!
+//! assert_eq!(solution.variable_value(v0), 0.3);
+//! assert_eq!(solution.variable_value(v1), 0.7);
+//! ```
+
 pub mod constants;
 mod constraints;
 mod environment;
@@ -12,8 +35,8 @@ pub use errors::{Error, Result};
 pub use ffi;
 use ffi::{
     cpxlp, CPXaddmipstarts, CPXaddrows, CPXchgobj, CPXchgobjsen, CPXchgprobtype, CPXcreateprob,
-    CPXfreeprob, CPXgetnumcols, CPXgetobjval, CPXgetx, CPXlpopt, CPXmipopt, CPXnewcols,
-    CPXwriteprob, CPXPROB_LP, CPXPROB_MILP, CPX_MAX, CPX_MIN,
+    CPXfreeprob, CPXgetobjval, CPXgetx, CPXlpopt, CPXmipopt, CPXnewcols, CPXwriteprob, CPXPROB_LP,
+    CPXPROB_MILP, CPX_MAX, CPX_MIN,
 };
 use log::info;
 pub use solution::*;
@@ -41,6 +64,7 @@ mod macros {
     pub(super) use cpx_lp_result;
 }
 
+/// A variable identifier, unique with respect to a given problem instance
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VariableId(usize);
 
@@ -50,6 +74,7 @@ impl VariableId {
     }
 }
 
+/// A constraint identifier, unique with respect to a given problem instance
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ConstraintId(usize);
 
@@ -59,6 +84,7 @@ impl ConstraintId {
     }
 }
 
+/// A CPLEX problem instance
 pub struct Problem {
     inner: *mut cpxlp,
     env: Environment,
@@ -97,6 +123,7 @@ impl ProblemType {
 }
 
 impl Problem {
+    /// Create a new CPLEX problem from a CPLEX environmant
     pub fn new<S>(env: Environment, name: S) -> Result<Self>
     where
         S: AsRef<str>,
@@ -137,12 +164,14 @@ impl Problem {
             )
         })?;
 
-        let index = unsafe { CPXgetnumcols(self.env.0, self.inner) } as usize - 1;
-        assert_eq!(self.variables.len(), index);
+        let index = self.variables.len();
         self.variables.push(var);
         Ok(VariableId(index))
     }
 
+    /// Add an array of variables to the problem.
+    ///
+    /// The id for the variables are returned, in the same order they have been given in the input.
     pub fn add_variables(&mut self, vars: Vec<Variable>) -> Result<Vec<VariableId>> {
         let names = vars
             .iter()
@@ -229,6 +258,9 @@ impl Problem {
         Ok(ConstraintId(index))
     }
 
+    /// Add an array of constraints to the problem.
+    ///
+    /// The id for the constraints are returned, in the same order they have been given in the input.
     pub fn add_constraints(&mut self, con: Vec<Constraint>) -> Result<Vec<ConstraintId>> {
         if con.is_empty() {
             return Err(errors::Input::from_message(
@@ -371,7 +403,7 @@ impl Problem {
 
     /// Solve the Problem, returning a `Solution` object with the
     /// result.
-    pub fn solve_as(mut self, pt: ProblemType) -> Result<Solution> {
+    pub fn solve_as(self, pt: ProblemType) -> Result<Solution> {
         macros::cpx_lp_result!(unsafe { CPXchgprobtype(self.env.0, self.inner, pt.into_raw()) })?;
 
         let start_optim = Instant::now();
@@ -402,11 +434,7 @@ impl Problem {
             )
         })?;
 
-        Ok(Solution::new(
-            std::mem::take(&mut self.variables),
-            variable_values,
-            objective_value,
-        ))
+        Ok(Solution::new(variable_values, objective_value))
     }
 }
 
