@@ -9,6 +9,6 @@ keywords.workspace = true
 repository.workspace = true
 
 [dependencies]
-ffi = { package = "cplex-rs-sys", path = "../cplex-rs-sys" }
+ffi = { package = "cplex-rs-sys", path = "../cplex-rs-sys", version = "0.1" }
 thiserror = "1.0"
 log = "0.4"
