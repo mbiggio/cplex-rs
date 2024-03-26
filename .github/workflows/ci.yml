@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
       - name: Check formatting
         run: cargo fmt -- --check
       - name: Build
