@@ -18,7 +18,7 @@ impl private::Parameter for QCPConvergeTol {}
 impl private::Parameter for StartAlg {}
 
 /// Barrier algorithm.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-algorithm
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-algorithm>
 #[derive(Copy, Clone, Debug)]
 pub enum Algorithm {
     Default,
@@ -43,7 +43,7 @@ impl Parameter for Algorithm {
 }
 
 /// Barrier column nonzeros.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-column-nonzeros
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-column-nonzeros>
 #[derive(Copy, Clone, Debug)]
 pub struct ColNonzeros(u32);
 
@@ -58,7 +58,7 @@ impl Parameter for ColNonzeros {
 }
 
 /// Barrier crossover algorithm.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-crossover-algorithm
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-crossover-algorithm>
 #[derive(Copy, Clone, Debug)]
 pub enum Crossover {
     Automatic,
@@ -81,7 +81,7 @@ impl Parameter for Crossover {
 }
 
 /// Barrier display information.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-display-information
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-display-information>
 #[derive(Copy, Clone, Debug)]
 pub enum Display {
     None,
@@ -104,7 +104,7 @@ impl Parameter for Display {
 }
 
 /// Convergence tolerance for LP and QP problems.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-convergence-tolerance-lp-qp-problems
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-convergence-tolerance-lp-qp-problems>
 #[derive(Copy, Clone, Debug)]
 pub struct ConvergeTol(f64);
 
@@ -131,7 +131,7 @@ impl Parameter for ConvergeTol {
 }
 
 /// Convergence tolerance for QC problems.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-convergence-tolerance-qc-problems
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-convergence-tolerance-qc-problems>
 #[derive(Copy, Clone, Debug)]
 pub struct QCPConvergeTol(f64);
 
@@ -158,7 +158,7 @@ impl Parameter for QCPConvergeTol {
 }
 
 /// Barrier starting point algorithm.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-starting-point-algorithm
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-starting-point-algorithm>
 #[derive(Copy, Clone, Debug)]
 pub enum StartAlg {
     DualIs0,

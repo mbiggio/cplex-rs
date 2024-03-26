@@ -7,7 +7,7 @@ impl private::Parameter for MIPGap {}
 impl private::Parameter for AbsMIPGap {}
 
 /// Relative MIP gap tolerance
-/// https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-relative-mip-gap-tolerance
+/// <https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-relative-mip-gap-tolerance>
 #[derive(Copy, Clone, Debug)]
 pub struct MIPGap(f64);
 
@@ -34,7 +34,7 @@ impl Parameter for MIPGap {
 }
 
 /// Absolute MIP gap tolerance
-/// https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-absolute-mip-gap-tolerance
+/// <https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-absolute-mip-gap-tolerance>
 #[derive(Copy, Clone, Debug)]
 pub struct AbsMIPGap(f64);
 

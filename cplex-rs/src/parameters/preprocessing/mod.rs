@@ -6,7 +6,7 @@ impl private::Parameter for Fill {}
 impl private::Parameter for Aggregator {}
 
 /// Preprocessing aggregator fill.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-preprocessing-aggregator-fill
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-preprocessing-aggregator-fill>
 #[derive(Copy, Clone, Debug)]
 pub struct Fill(pub u32);
 
@@ -21,7 +21,7 @@ impl Parameter for Fill {
 }
 
 /// Preprocessing aggregator application limit
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-preprocessing-aggregator-application-limit
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-preprocessing-aggregator-application-limit>
 #[derive(Copy, Clone, Debug)]
 pub enum Aggregator {
     Automatic,

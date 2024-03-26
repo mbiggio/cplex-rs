@@ -5,7 +5,7 @@ use super::{private, Parameter, ParameterValue};
 impl private::Parameter for MIP {}
 
 /// MIP emphasis switch.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-mip-emphasis-switch
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-mip-emphasis-switch>
 #[derive(Copy, Clone, Debug)]
 pub enum MIP {
     Balanced,

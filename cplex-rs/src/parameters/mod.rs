@@ -46,7 +46,7 @@ pub enum ParameterValue {
 }
 
 /// Advanced start switch.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-advanced-start-switch
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-advanced-start-switch>
 #[derive(Copy, Clone, Debug)]
 pub enum Advance {
     Unused = 0,
@@ -69,7 +69,7 @@ impl Parameter for Advance {
 }
 
 /// Parallel mode switch.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-parallel-mode-switch
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-parallel-mode-switch>
 #[derive(Copy, Clone, Debug)]
 pub enum ParallelMode {
     Opportunistic,
@@ -92,7 +92,7 @@ impl Parameter for ParallelMode {
 }
 
 /// Global thread count.
-/// https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-global-thread-count
+/// <https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-global-thread-count>
 #[derive(Copy, Clone, Debug)]
 pub struct Threads(pub u32);
 
@@ -107,7 +107,7 @@ impl Parameter for Threads {
 }
 
 /// Messages to screen switch.
-/// https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-messages-screen-switch
+/// <https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-messages-screen-switch>
 #[derive(Copy, Clone, Debug)]
 pub struct ScreenOutput(pub bool);
 
@@ -122,7 +122,7 @@ impl Parameter for ScreenOutput {
 }
 
 /// Random seed.
-/// https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-random-seed
+/// <https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-random-seed>
 #[derive(Copy, Clone, Debug)]
 pub struct RandomSeed(pub u32);
 
@@ -137,7 +137,7 @@ impl Parameter for RandomSeed {
 }
 
 /// Optimizer time limit in seconds.
-/// https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-optimizer-time-limit-in-seconds
+/// <https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-optimizer-time-limit-in-seconds>
 #[derive(Copy, Clone, Debug)]
 pub struct TimeLimit(pub Duration);
 

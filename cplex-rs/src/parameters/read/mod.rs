@@ -6,7 +6,7 @@ impl private::Parameter for APIEncoding {}
 impl private::Parameter for DataCheck {}
 
 /// API string encoding switch.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-api-string-encoding-switch
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-api-string-encoding-switch>
 #[derive(Copy, Clone, Debug)]
 pub struct APIEncoding(pub &'static str);
 
@@ -21,7 +21,7 @@ impl Parameter for APIEncoding {
 }
 
 /// Data consistency checking and modeling assistance.
-/// https://www.ibm.com/docs/en/icos/20.1.0?topic=parameters-data-consistency-checking-modeling-assistance
+/// <https://www.ibm.com/docs/en/icos/20.1.0?topic=parameters-data-consistency-checking-modeling-assistance>
 #[derive(Copy, Clone, Debug)]
 pub enum DataCheck {
     Off,

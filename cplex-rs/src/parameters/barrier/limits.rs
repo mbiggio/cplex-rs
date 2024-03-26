@@ -13,7 +13,7 @@ impl private::Parameter for ObjRange {}
 impl private::Parameter for Ordering {}
 
 /// Barrier growth limit.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-growth-limit
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-growth-limit>
 #[derive(Copy, Clone, Debug)]
 pub struct Growth(f64);
 
@@ -40,7 +40,7 @@ impl Parameter for Growth {
 }
 
 /// Barrier iteration limit.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-iteration-limit
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-iteration-limit>
 #[derive(Copy, Clone, Debug)]
 pub struct Iteration(pub u64);
 
@@ -55,7 +55,7 @@ impl Parameter for Iteration {
 }
 
 /// Barrier maximum correction limit.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-maximum-correction-limit
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-maximum-correction-limit>
 #[derive(Copy, Clone, Debug)]
 pub enum Corrections {
     Automatic,
@@ -76,7 +76,7 @@ impl Parameter for Corrections {
 }
 
 /// Barrier objective range.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-maximum-correction-limit
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-maximum-correction-limit>
 #[derive(Copy, Clone, Debug)]
 pub struct ObjRange(f64);
 
@@ -103,7 +103,7 @@ impl Parameter for ObjRange {
 }
 
 /// Barrier ordering algorithm.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-ordering-algorithm
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-barrier-ordering-algorithm>
 #[derive(Copy, Clone, Debug)]
 pub enum Ordering {
     Automatic,

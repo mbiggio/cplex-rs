@@ -12,7 +12,7 @@ impl private::Parameter for Solutions {}
 impl private::Parameter for Nodes {}
 
 /// AggForCut.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-constraint-aggregation-limit-cut-generation
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-constraint-aggregation-limit-cut-generation>
 #[derive(Copy, Clone, Debug)]
 pub struct AggForCut(pub u32);
 
@@ -27,7 +27,7 @@ impl Parameter for AggForCut {
 }
 
 /// Solutions.
-/// https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-mip-integer-solution-limit
+/// <https://www.ibm.com/docs/en/icos/22.1.1?topic=parameters-mip-integer-solution-limit>
 #[derive(Copy, Clone, Debug)]
 pub struct Solutions(u64);
 
@@ -55,7 +55,7 @@ impl Parameter for Solutions {
 }
 
 /// MIP node limit.
-/// https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-mip-node-limit
+/// <https://www.ibm.com/docs/en/icos/12.9.0?topic=parameters-mip-node-limit>
 #[derive(Copy, Clone, Debug)]
 pub struct Nodes(pub u64);
 
