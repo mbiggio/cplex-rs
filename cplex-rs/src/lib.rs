@@ -658,7 +658,7 @@ mod test {
         let env = Environment::new().unwrap();
         let mut problem = Problem::new(env, "unbounded").unwrap();
 
-        let v0 = problem
+        problem
             .add_variable(Variable::new(
                 VariableType::Integer,
                 1.0,
