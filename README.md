@@ -10,3 +10,14 @@ It adds a few features on top of `rplex`, such as:
 It also remove some features which are present `rplex`, especially the macros to define constraints and variables, since they present some issues.
 
 It depends on the raw cplex bindings, generated through [bindgen](https://github.com/rust-lang/rust-bindgen) in the [cplex-rs-sys](./cplex-rs-sys/README.md) crate.
+
+To build this repo, a valid CPLEX installation must be present on the system. If the CPLEX installation path is not the standard one, you will need to pass the `CPLEX_PATH` environment variable to `cargo` with the cplex installation path of choice, e.g.:
+
+```bash
+CPLEX_PATH=/path/to/cplex/installation cargo build
+```
+
+## Testing
+Tests in the CI are run using a personal copy of the CPLEX community edition, deployed in a docker image a private docker repository.
+
+If you want to generate an image with your own CPLEX installation to test this repo, you can find instructions in the [./utils](./utils/README.md) folder on how to do so.
