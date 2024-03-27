@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: mbiggio/cplex_community_edition:latest
+      image: ${{ vars.docker_hub_private_repo }}:latest
       credentials:
           username: ${{ secrets.docker_hub_username}}
           password: ${{ secrets.docker_hub_password}}
