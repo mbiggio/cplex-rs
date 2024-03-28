@@ -3,13 +3,12 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    #[cfg(docsrs)]
-    let cplex_include_path = Path::from(env!("CARGO_MANIFEST_DIR"))
-        .join("include")
-        .join("22010000");
-
-    #[cfg(not(docsrs))]
-    let cplex_include_path = {
+    let building_docs = std::env::var("DOCS_RS").is_ok();
+    let cplex_include_path = if building_docs {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("include")
+            .join("22010000")
+    } else {
         let cplex_installation_path = env::var("CPLEX_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
@@ -42,7 +41,12 @@ fn main() {
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .header("wrapper.h")
+        .header(
+            cplex_include_path
+                .join("ilcplex")
+                .join("cplex.h")
+                .to_string_lossy(),
+        )
         .clang_arg(format!(
             "-F{}",
             cplex_include_path.as_os_str().to_string_lossy()
