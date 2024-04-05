@@ -25,6 +25,7 @@ pub mod constants;
 mod constraints;
 mod environment;
 pub mod errors;
+pub mod logging;
 pub mod parameters;
 mod solution;
 mod variables;
@@ -132,9 +133,9 @@ impl Problem {
         let mut status = 0;
         let name =
             CString::new(name.as_ref()).map_err(|e| errors::Input::from_message(e.to_string()))?;
-        let inner = unsafe { CPXcreateprob(env.0, &mut status, name.as_ptr()) };
+        let inner = unsafe { CPXcreateprob(env.inner, &mut status, name.as_ptr()) };
         if inner.is_null() {
-            Err(errors::Cplex::from_code(env.0, std::ptr::null(), status).into())
+            Err(errors::Cplex::from_code(env.inner, std::ptr::null(), status).into())
         } else {
             Ok(Problem {
                 inner,
@@ -154,7 +155,7 @@ impl Problem {
 
         macros::cpx_lp_result!(unsafe {
             CPXnewcols(
-                self.env.0,
+                self.env.inner,
                 self.inner,
                 1,
                 &var.weight(),
@@ -197,7 +198,7 @@ impl Problem {
 
         macros::cpx_lp_result!(unsafe {
             CPXnewcols(
-                self.env.0,
+                self.env.inner,
                 self.inner,
                 vars.len() as i32,
                 objs.as_ptr(),
@@ -236,7 +237,7 @@ impl Problem {
             .transpose()?;
         macros::cpx_lp_result!(unsafe {
             CPXaddrows(
-                self.env.0,
+                self.env.inner,
                 self.inner,
                 0,
                 1,
@@ -311,7 +312,7 @@ impl Problem {
 
         macros::cpx_lp_result!(unsafe {
             CPXaddrows(
-                self.env.0,
+                self.env.inner,
                 self.inner,
                 0,
                 con.len() as i32,
@@ -344,7 +345,7 @@ impl Problem {
 
         macros::cpx_lp_result!(unsafe {
             CPXchgobj(
-                self.env.0,
+                self.env.inner,
                 self.inner,
                 ind.len() as c_int,
                 ind.as_ptr(),
@@ -357,7 +358,7 @@ impl Problem {
 
     /// Change the objective type. Default: `ObjectiveType::Minimize`.
     pub fn set_objective_type(self, ty: ObjectiveType) -> Result<Self> {
-        macros::cpx_lp_result!(unsafe { CPXchgobjsen(self.env.0, self.inner, ty.into_raw()) })?;
+        macros::cpx_lp_result!(unsafe { CPXchgobjsen(self.env.inner, self.inner, ty.into_raw()) })?;
         Ok(self)
     }
 
@@ -370,7 +371,7 @@ impl Problem {
             CString::new(name.as_ref()).map_err(|e| errors::Input::from_message(e.to_string()))?;
 
         macros::cpx_lp_result!(unsafe {
-            CPXwriteprob(self.env.0, self.inner, name.as_ptr(), std::ptr::null())
+            CPXwriteprob(self.env.inner, self.inner, name.as_ptr(), std::ptr::null())
         })
     }
 
@@ -389,7 +390,7 @@ impl Problem {
 
         macros::cpx_lp_result!(unsafe {
             CPXaddmipstarts(
-                self.env.0,
+                self.env.inner,
                 self.inner,
                 1,
                 vars.len() as c_int,
@@ -405,21 +406,23 @@ impl Problem {
     /// Solve the Problem, returning a `Solution` object with the
     /// result.
     pub fn solve_as(self, pt: ProblemType) -> Result<Solution> {
-        macros::cpx_lp_result!(unsafe { CPXchgprobtype(self.env.0, self.inner, pt.into_raw()) })?;
+        macros::cpx_lp_result!(unsafe {
+            CPXchgprobtype(self.env.inner, self.inner, pt.into_raw())
+        })?;
 
         let start_optim = Instant::now();
         match pt {
             ProblemType::MixedInteger => {
-                macros::cpx_lp_result!(unsafe { CPXmipopt(self.env.0, self.inner) })?
+                macros::cpx_lp_result!(unsafe { CPXmipopt(self.env.inner, self.inner) })?
             }
             ProblemType::Linear => {
-                macros::cpx_lp_result!(unsafe { CPXlpopt(self.env.0, self.inner) })?
+                macros::cpx_lp_result!(unsafe { CPXlpopt(self.env.inner, self.inner) })?
             }
         };
         let elapsed = start_optim.elapsed();
         info!("CPLEX model solution took: {:?}", elapsed);
 
-        let code = unsafe { CPXgetstat(self.env.0, self.inner) };
+        let code = unsafe { CPXgetstat(self.env.inner, self.inner) };
         if code as u32 == CPX_STAT_INFEASIBLE || code as u32 == CPX_STAT_INForUNBD {
             return Err(crate::errors::Cplex::Unfeasible {
                 code,
@@ -438,13 +441,13 @@ impl Problem {
 
         let mut objective_value: f64 = 0.0;
         macros::cpx_lp_result!(unsafe {
-            CPXgetobjval(self.env.0, self.inner, &mut objective_value)
+            CPXgetobjval(self.env.inner, self.inner, &mut objective_value)
         })?;
 
         let mut variable_values = vec![0f64; self.variables.len()];
         macros::cpx_lp_result!(unsafe {
             CPXgetx(
-                self.env.0,
+                self.env.inner,
                 self.inner,
                 variable_values.as_mut_ptr(),
                 0,
@@ -459,7 +462,7 @@ impl Problem {
 impl Drop for Problem {
     fn drop(&mut self) {
         unsafe {
-            assert_eq!(CPXfreeprob(self.env.0, &mut self.inner), 0);
+            assert_eq!(CPXfreeprob(self.env.inner, &mut self.inner), 0);
         }
     }
 }
