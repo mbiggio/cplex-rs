@@ -2,7 +2,9 @@ use std::ffi::{c_void, CString};
 
 use crate::{
     errors::{self, Result},
-    logging::{get_trampoline, LoggingCallback, StreamType, DEFAULT_LOGGING_CLOSURE},
+    logging::{
+        get_trampoline, LoggingCallback, LoggingClosure, StreamType, DEFAULT_LOGGING_CLOSURE,
+    },
     parameters::{Parameter, ParameterValue},
 };
 use ffi::{
@@ -30,7 +32,7 @@ mod macros {
 
 pub struct Environment {
     pub(crate) inner: *mut cpxenv,
-    pub(crate) logging_closures: [Option<(Box<dyn Fn(&str)>, LoggingCallback)>; 4],
+    pub(crate) logging_closures: [Option<(LoggingClosure, LoggingCallback)>; 4],
 }
 
 impl Environment {
@@ -75,7 +77,7 @@ impl Environment {
         assert!(!channel.is_null());
 
         if let Some((mut previous_closure, previous_trampoline)) =
-            self.logging_closures[stream_type.to_index()].take()
+            self.logging_closures[stream_type.as_index()].take()
         {
             macros::cpx_env_result!(unsafe {
                 CPXdelfuncdest(
@@ -100,7 +102,7 @@ impl Environment {
         assert!(!channel.is_null());
 
         if let Some((mut previous_closure, previous_trampoline)) =
-            self.logging_closures[stream_type.to_index()].take()
+            self.logging_closures[stream_type.as_index()].take()
         {
             macros::cpx_env_result!(unsafe {
                 CPXdelfuncdest(
@@ -123,7 +125,7 @@ impl Environment {
             )
         })?;
 
-        self.logging_closures[stream_type.to_index()] = Some((new_closure, new_trampoline));
+        self.logging_closures[stream_type.as_index()] = Some((new_closure, new_trampoline));
 
         Ok(())
     }
