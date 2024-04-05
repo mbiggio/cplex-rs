@@ -19,8 +19,23 @@ fn main() {
                 .expect("No valid CPLEX installation path found. Please set the env variable 'CPLEX_PATH' with the CPLEX installation directory or install CPLEX in the default location.")
         });
 
-        // For now we support only static linking on linux x86-64
-        let cplex_lib_path = cplex_installation_path.join("lib/x86-64_linux/static_pic");
+
+        let os = env::consts::OS;
+        let arch = std::env::consts::ARCH;
+        println!("cargo:warning=Detected OS: {}", os);
+        println!("cargo:warning=Detected arch: {}", arch);
+
+        let os_string = if os == "linux" && arch == "x86_64" {
+            "x86-64_linux"
+        }
+        else if os == "macos" && arch == "aarch64" {
+            "arm64_osx"
+        }
+        else {
+            panic!("Unsupported OS-arch combination: {}-{}", os, arch);
+        };
+
+        let cplex_lib_path = cplex_installation_path.join(format!("lib/{os_string}/static_pic"));
 
         // Tell cargo to look for shared libraries in the specified directory
         println!(
