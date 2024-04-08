@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
+  pull_request_target:
     branches: [main]
 
 env:
@@ -13,6 +13,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: PROD
     container:
       image: ${{ vars.docker_hub_private_repo }}:latest
       credentials:
