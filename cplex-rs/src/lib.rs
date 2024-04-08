@@ -3,9 +3,10 @@
 //! # Example
 //! ```
 //! use cplex_rs::*;
+//! use std::rc::Rc;
 //!
-//! let env = Environment::new().unwrap();
-//! let mut problem = Problem::new(env, "my_prob").unwrap();
+//! let env = Rc::new(Environment::new().unwrap());
+//! let mut problem = Problem::new(&env, "my_prob").unwrap();
 //!
 //! let v0 = problem.add_variable(Variable::new(VariableType::Continuous, 1.0, 0.0, 1.0, "x0")).unwrap();
 //! let v1 = problem.add_variable(Variable::new(VariableType::Continuous, 10.0, 0.0, 1.0, "x1")).unwrap();
@@ -46,6 +47,7 @@ pub use variables::*;
 
 use std::{
     ffi::{c_int, CString},
+    rc::Rc,
     time::Instant,
 };
 
@@ -89,7 +91,7 @@ impl ConstraintId {
 /// A CPLEX problem instance
 pub struct Problem {
     inner: *mut cpxlp,
-    env: Environment,
+    env: Rc<Environment>,
     variables: Vec<Variable>,
     constraints: Vec<Constraint>,
 }
@@ -126,7 +128,7 @@ impl ProblemType {
 
 impl Problem {
     /// Create a new CPLEX problem from a CPLEX environmant
-    pub fn new<S>(env: Environment, name: S) -> Result<Self>
+    pub fn new<S>(env: &Rc<Environment>, name: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
@@ -134,6 +136,7 @@ impl Problem {
         let name =
             CString::new(name.as_ref()).map_err(|e| errors::Input::from_message(e.to_string()))?;
         let inner = unsafe { CPXcreateprob(env.inner, &mut status, name.as_ptr()) };
+        let env = env.clone();
         if inner.is_null() {
             Err(errors::Cplex::from_code(env.inner, std::ptr::null(), status).into())
         } else {
@@ -478,7 +481,7 @@ mod test {
     #[test]
     fn mipex1() {
         let env = Environment::new().unwrap();
-        let mut problem = Problem::new(env, "mipex1").unwrap();
+        let mut problem = Problem::new(&Rc::new(env), "mipex1").unwrap();
 
         let x0 = problem
             .add_variable(Variable::new(
@@ -560,7 +563,7 @@ mod test {
     #[test]
     fn mipex1_batch() {
         let env = Environment::new().unwrap();
-        let mut problem = Problem::new(env, "mipex1").unwrap();
+        let mut problem = Problem::new(&Rc::new(env), "mipex1").unwrap();
 
         let vars = problem
             .add_variables(vec![
@@ -619,7 +622,7 @@ mod test {
     #[test]
     fn unfeasible() {
         let env = Environment::new().unwrap();
-        let mut problem = Problem::new(env, "unfeasible").unwrap();
+        let mut problem = Problem::new(&Rc::new(env), "unfeasible").unwrap();
 
         let vars = problem
             .add_variables(vec![
@@ -659,7 +662,7 @@ mod test {
     #[test]
     fn unbounded() {
         let env = Environment::new().unwrap();
-        let mut problem = Problem::new(env, "unbounded").unwrap();
+        let mut problem = Problem::new(&Rc::new(env), "unbounded").unwrap();
 
         problem
             .add_variable(Variable::new(
