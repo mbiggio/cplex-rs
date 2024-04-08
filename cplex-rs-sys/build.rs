@@ -19,7 +19,6 @@ fn main() {
                 .expect("No valid CPLEX installation path found. Please set the env variable 'CPLEX_PATH' with the CPLEX installation directory or install CPLEX in the default location.")
         });
 
-
         let os = env::consts::OS;
         let arch = std::env::consts::ARCH;
         println!("cargo:warning=Detected OS: {}", os);
@@ -27,11 +26,9 @@ fn main() {
 
         let os_string = if os == "linux" && arch == "x86_64" {
             "x86-64_linux"
-        }
-        else if os == "macos" && arch == "aarch64" {
+        } else if os == "macos" && arch == "aarch64" {
             "arm64_osx"
-        }
-        else {
+        } else {
             panic!("Unsupported OS-arch combination: {}-{}", os, arch);
         };
 
