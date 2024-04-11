@@ -96,6 +96,8 @@ pub struct Problem {
     constraints: Vec<Constraint>,
 }
 
+unsafe impl Send for Problem {}
+
 #[derive(Copy, Clone, Debug)]
 pub enum ObjectiveType {
     Maximize,

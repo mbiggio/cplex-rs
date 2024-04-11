@@ -35,6 +35,8 @@ pub struct Environment {
     pub(crate) logging_closures: [Option<(LoggingClosure, LoggingCallback)>; 4],
 }
 
+unsafe impl Send for Environment {}
+
 impl Environment {
     pub fn new() -> Result<Environment> {
         let mut status = 0;
