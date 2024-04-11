@@ -1,7 +1,7 @@
 use std::ffi::{c_char, c_void, CStr};
 
 pub type LoggingCallback = Option<unsafe extern "C" fn(*mut c_void, *const c_char)>;
-pub type LoggingClosure = Box<dyn Fn(&str)>;
+pub type LoggingClosure = Box<dyn Fn(&str) + Send>;
 
 pub(crate) const RESULTS_STREAM_IDX: usize = 0;
 pub(crate) const WARNING_STREAM_IDX: usize = 1;

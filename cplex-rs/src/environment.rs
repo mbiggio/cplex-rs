@@ -92,7 +92,7 @@ impl Environment {
         Ok(())
     }
 
-    pub fn set_logging_closure<F: Fn(&str) + 'static>(
+    pub fn set_logging_closure<F: Fn(&str) + Send + 'static>(
         &mut self,
         stream_type: StreamType,
         closure: F,
