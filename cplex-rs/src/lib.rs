@@ -40,7 +40,7 @@ use ffi::{
     CPXmipopt, CPXnewcols, CPXwriteprob, CPXMIP_UNBOUNDED, CPXPROB_LP, CPXPROB_MILP, CPX_MAX,
     CPX_MIN, CPX_STAT_INFEASIBLE, CPX_STAT_UNBOUNDED,
 };
-use log::info;
+use log::debug;
 pub use solution::*;
 pub use variables::*;
 
@@ -422,7 +422,7 @@ impl Problem {
             }
         };
         let elapsed = start_optim.elapsed();
-        info!("CPLEX model solution took: {:?}", elapsed);
+        debug!("CPLEX model solution took: {:?}", elapsed);
 
         let code = unsafe { CPXgetstat(self.env.inner, self.inner) };
         if code as u32 == CPX_STAT_INFEASIBLE || code as u32 == CPX_STAT_INForUNBD {
