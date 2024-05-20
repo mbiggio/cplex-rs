@@ -29,10 +29,7 @@ impl StreamType {
     }
 }
 
-pub(crate) fn get_trampoline<F>(_closure: &F) -> LoggingCallback
-where
-    F: Fn(&str),
-{
+pub(crate) fn get_trampoline<F: Fn(&str)>() -> LoggingCallback {
     Some(trampoline::<F>)
 }
 

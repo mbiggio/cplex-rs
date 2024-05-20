@@ -117,12 +117,12 @@ impl Environment {
         }
 
         let mut new_closure = Box::new(closure);
-        let new_trampoline = get_trampoline(&new_closure);
+        let new_trampoline = get_trampoline::<F>();
         macros::cpx_env_result!(unsafe {
             CPXaddfuncdest(
                 self.inner,
                 channel,
-                &mut *new_closure as *mut _ as *mut c_void,
+                &mut *new_closure as *mut F as *mut c_void,
                 new_trampoline,
             )
         })?;
