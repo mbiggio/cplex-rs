@@ -148,6 +148,16 @@ impl Problem {
         }
     }
 
+    /// Get a mutable reference to the environment of the problem.
+    pub fn env_mut(&mut self) -> &mut Environment {
+        &mut self.env
+    }
+
+    /// Get a reference to the environment of the problem.
+    pub fn env(&self) -> &Environment {
+        &self.env
+    }
+
     /// Add a variable to the problem.
     ///
     /// The id for the Variable is returned.
