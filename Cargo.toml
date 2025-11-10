@@ -12,4 +12,4 @@ version = "0.1.8"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 keywords = ["optimization", "binding", "cplex"]
-repository = "https://github.com/mbiggio/cplex-rs"
+repository = "https://github.com/cplex-rs/cplex-rs"

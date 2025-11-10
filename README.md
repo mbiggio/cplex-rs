@@ -1,4 +1,4 @@
-# cplex-rs ![CI Pipeline](https://github.com/mbiggio/cplex-rs/actions/workflows/ci.yml/badge.svg)
+# cplex-rs ![CI Pipeline](https://github.com/cplex-rs/cplex-rs/actions/workflows/ci.yml/badge.svg)
 
 Safe rust bindings for [CPLEX](https://www.ibm.com/products/ilog-cplex-optimization-studio/cplex-optimizer), based on the existing [rplex](https://github.com/emallson/rplex/tree/master) project. 
 It adds a few features on top of `rplex`, such as:
